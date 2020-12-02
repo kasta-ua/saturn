@@ -1,5 +1,7 @@
 (ns saturn.store.pg
   (:require [clojure.java.jdbc :as jdbc]
+            [chime.core :as chime]
+            [chime.joda-time]  ;; register chime/->instant for JodaTime
             [saturn.store :as store])
   (:import [java.time Instant]
            [java.sql Timestamp]))
@@ -9,11 +11,6 @@
   Instant
   (sql-value [v]
     (Timestamp/from v)))
-
-(extend-protocol jdbc/IResultSetReadColumn
-  Timestamp
-  (result-set-read-column [v _ _]
-    (.toInstant v)))
 
 
 (defn ->state [state]
@@ -51,7 +48,9 @@
 
   store/History
   (history [_]
-    (into {} (map (juxt :name :scheduled_at)) (get-history db)))
+    (into {}
+      (map (juxt :name (comp chime/->instant :scheduled_at)))
+      (get-history db)))
 
   store/Cleanup
   (cleanup [_]
