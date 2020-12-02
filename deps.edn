@@ -1,0 +1,18 @@
+{:deps
+ {org.clojure/tools.logging {:mvn/version "1.1.0"}
+  org.clojure/spec.alpha    {:mvn/version "0.2.187"}
+  jarohen/chime             {:mvn/version "0.3.2"}}
+
+ :aliases
+ {:test {:extra-paths ["test"]
+         :extra-deps
+         {ch.qos.logback/logback-classic {:mvn/version "1.2.3"}}}
+
+  :pg {:extra-deps
+       {org.clojure/java.jdbc     {:mvn/version "0.7.11"}
+        org.postgresql/postgresql {:mvn/version "42.2.18"}}}
+
+  :repl {:extra-deps
+         {cider/cider-nrepl             {:mvn/version "0.25.5"}
+          org.clojure/tools.nrepl       {:mvn/version "0.2.13"}
+          refactor-nrepl/refactor-nrepl {:mvn/version "2.5.0"}}}}}
