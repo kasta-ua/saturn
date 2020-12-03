@@ -3,3 +3,4 @@
 /pom.xml*
 .lein-repl-history
 .nrepl-port
+.DS_Store
