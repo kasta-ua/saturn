@@ -31,9 +31,12 @@
       #(run % command opts)
       {:error-handler (fn [e]
                         (log/errorf e "saturn command %s failed" command)
-                        (store/failed (:store scheduler) command)
-                        (when (:report-error scheduler)
-                          ((:report-error scheduler) {:error e, :command command}))
+                        (try
+                          (when (:report-error scheduler)
+                            ((:report-error scheduler) {:error e, :command command}))
+                          (store/failed (:store scheduler) command)
+                          (catch Exception inner-e
+                            (log/errorf inner-e "saturn error-handler failed for command %s" command)))
                         (not (instance? InterruptedException e)))})))
 
 
