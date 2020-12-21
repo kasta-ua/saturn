@@ -11,7 +11,7 @@
 (def dependencies
   (deps->vec (:deps +deps+)))
 
-(defproject ua.kasta/saturn "1.0.0"
+(defproject ua.kasta/saturn "1.0.1"
   :dependencies ~dependencies
   :description "Run periodic tasks inside your application"
   :license {:name "Eclipse Public License - v1.0"
