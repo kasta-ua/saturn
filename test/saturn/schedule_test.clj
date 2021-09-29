@@ -9,7 +9,7 @@
 
 
 (defn today-at [h m]
-  (parse (format "2020-11-30T%02d:%02d:00+02:00" h m)))
+  (OffsetDateTime/parse (format "2020-11-30T%02d:%02d:00+02:00" h m)))
 
 
 (deftest generating-schedules
@@ -27,7 +27,7 @@
        "2020-11-30T00:03+02:00[Europe/Kiev]"
        "2020-11-30T00:04+02:00[Europe/Kiev]"]
 
-      [:every 1 :hour :at 13]
+      [:every :hour :at 13]
       ["2020-11-30T00:13+02:00[Europe/Kiev]"
        "2020-11-30T01:13+02:00[Europe/Kiev]"
        "2020-11-30T02:13+02:00[Europe/Kiev]"
@@ -53,7 +53,14 @@
        "2020-11-30T13:00+02:00[Europe/Kiev]"
        "2020-11-30T18:00+02:00[Europe/Kiev]"
        "2020-12-01T08:00+02:00[Europe/Kiev]"
-       "2020-12-01T13:00+02:00[Europe/Kiev]"])))
+       "2020-12-01T13:00+02:00[Europe/Kiev]"]
+
+      [:every :tuesday :at 9 0]
+      ["2020-12-01T09:00+02:00[Europe/Kiev]"
+       "2020-12-08T09:00+02:00[Europe/Kiev]"
+       "2020-12-15T09:00+02:00[Europe/Kiev]"
+       "2020-12-22T09:00+02:00[Europe/Kiev]"
+       "2020-12-29T09:00+02:00[Europe/Kiev]"])))
 
 
 (deftest adjusting-schedules

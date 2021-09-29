@@ -1,7 +1,17 @@
 (ns saturn.schedule
   (:require [clojure.spec.alpha :as s]
             [chime.core :as chime])
-  (:import [java.time Instant Duration LocalTime ZonedDateTime ZoneId]))
+  (:import [java.time Instant Duration LocalTime ZonedDateTime ZoneId DayOfWeek]
+           [java.time.temporal TemporalAdjusters]))
+
+
+(def -WEEKDAYS
+  (zipmap
+    [:monday :tuesday :wednesday :thursday :friday :saturday :sunday]
+    (DayOfWeek/values)))
+
+
+(def WEEKDAYS (set (keys -WEEKDAYS)))
 
 
 (s/def ::minute (s/int-in 0 60))
@@ -11,8 +21,8 @@
 (s/def ::schedule
   (s/cat
     :quantifier #{:every}
-    :period     int?
-    :unit       #{:minute :minutes :hour :hours :day :days}
+    :period     (s/? int?)
+    :unit       (into #{:minute :minutes :hour :hours :day :days} WEEKDAYS)
     :at         (s/? #{:at})
     :at         (s/? (s/alt
                        :minute ::minute
@@ -20,9 +30,10 @@
 
 
 (comment
-  (s/conform ::schedule [:every 1 :minute])
+  (s/conform ::schedule [:every :minute])
   (s/conform ::schedule [:every 2 :hours :at 50])
-  (s/conform ::schedule [:every 1 :day :at 8 0, 13 0, 20 0]))
+  (s/conform ::schedule [:every 1 :day :at 8 0, 13 0, 20 0])
+  (s/conform ::schedule [:every :monday :at 9 0]))
 
 
 (def tz ^ZoneId (ZoneId/of "Europe/Kiev"))
@@ -36,10 +47,13 @@
   (.atZone t tz))
 
 
-(defn ^Instant today-at [h m]
+(defn ^ZonedDateTime today-at [h m]
   (-> (LocalTime/of h m)
-      (.adjustInto (ZonedDateTime/now tz))
-      .toInstant))
+      (.adjustInto (ZonedDateTime/now tz))))
+
+
+(defn with-weekday [dt weekday]
+  (.with dt (TemporalAdjusters/nextOrSame (get -WEEKDAYS weekday))))
 
 
 (defn ^Duration minutes [x]
@@ -64,18 +78,25 @@
 
 (defn generate
   "Returns an infinite sequence of times according to schedule"
-  [{:keys [unit period at]}]
-  (let [incr   (case unit
-                 (:minute :minutes) (minutes period)
-                 (:hour :hours)     (hours period)
-                 (:day :days)       (days period))
+  [{:keys [unit period at]
+    :or   {period 1}}]
+  (let [incr   (condp contains? unit
+                 #{:minute :minutes} (minutes period)
+                 #{:hour :hours}     (hours period)
+                 #{:day :days}       (days period)
+                 WEEKDAYS            (days (* period 7)))
         starts (case (first at)
                  :minute [(today-at 0 (second at))]
                  :times  (->> (second at)
                               (map #(today-at (:hour %) (:minute %)))
                               (sort))
                  [(today-at 0 0)])]
-    (->> (mapv (fn [s] (chime/periodic-seq s incr)) starts)
+    (->> (mapv (fn [s]
+                 (cond-> s
+                   (contains? WEEKDAYS unit) (with-weekday unit)
+                   :always                   .toInstant
+                   :always                   (chime/periodic-seq incr)))
+           starts)
          (apply interleave))))
 
 
