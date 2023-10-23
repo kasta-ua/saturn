@@ -60,7 +60,15 @@
        "2020-12-08T09:00+02:00[Europe/Kiev]"
        "2020-12-15T09:00+02:00[Europe/Kiev]"
        "2020-12-22T09:00+02:00[Europe/Kiev]"
-       "2020-12-29T09:00+02:00[Europe/Kiev]"])))
+       "2020-12-29T09:00+02:00[Europe/Kiev]"]
+
+      [:every 1 :day :at 14 45 (s/filter-month 12) (s/filter-day 5)]
+      ["2020-12-05T14:45+02:00[Europe/Kiev]"
+       "2021-12-05T14:45+02:00[Europe/Kiev]"
+       "2022-12-05T14:45+02:00[Europe/Kiev]"
+       "2023-12-05T14:45+02:00[Europe/Kiev]"
+       "2024-12-05T14:45+02:00[Europe/Kiev]"])))
+
 
 
 (deftest adjusting-schedules
