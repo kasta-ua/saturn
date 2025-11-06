@@ -1,3 +1,7 @@
+## 1.0.3
+
+* Gracefully handle DST transitions
+
 ## 1.0.2
 
 * Support `[:every :monday :at 9 0]` schedule format
