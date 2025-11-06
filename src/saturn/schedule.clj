@@ -76,26 +76,50 @@
               :explain  (s/explain-str ::schedule schedule)}))))
 
 
+(defn- zoned-periodic-seq
+  "Like chime/periodic-seq but uses ZonedDateTime arithmetic to respect DST.
+   For minutes, uses Instant + Duration (DST-agnostic).
+   For hours/days, uses ZonedDateTime + Period (DST-aware)."
+  [^ZonedDateTime start unit period]
+  (let [advance (cond
+                  (contains? #{:minute :minutes} unit)
+                  ;; For minutes, convert to Instant and use Duration (DST-agnostic is correct)
+                  (let [dur (minutes period)]
+                    (fn [^Instant t] (.plus t dur)))
+
+                  (contains? #{:hour :hours} unit)
+                  ;; For hours, use Period.ofHours to respect DST
+                  (let [p (java.time.Period/ofDays 0)]
+                    (fn [^ZonedDateTime t] (.plusHours t period)))
+
+                  (contains? #{:day :days} unit)
+                  ;; For days, use plusDays to respect DST
+                  (fn [^ZonedDateTime t] (.plusDays t period))
+
+                  (contains? WEEKDAYS unit)
+                  ;; For weekdays, add weeks (7 days)
+                  (fn [^ZonedDateTime t] (.plusWeeks t period)))]
+    (if (contains? #{:minute :minutes} unit)
+      ;; Minutes: use Instant-based sequence
+      (chime/periodic-seq (.toInstant start) (minutes period))
+      ;; Hours/Days/Weekdays: generate ZonedDateTime sequence, convert to Instant
+      (map #(.toInstant %) (iterate advance start)))))
+
+
 (defn generate
   "Returns an infinite sequence of times according to schedule"
   [{:keys [unit period at]
     :or   {period 1}}]
-  (let [incr   (condp contains? unit
-                 #{:minute :minutes} (minutes period)
-                 #{:hour :hours}     (hours period)
-                 #{:day :days}       (days period)
-                 WEEKDAYS            (days (* period 7)))
-        starts (case (first at)
+  (let [starts (case (first at)
                  :minute [(today-at 0 (second at))]
                  :times  (->> (second at)
                               (map #(today-at (:hour %) (:minute %)))
                               (sort))
                  [(today-at 0 0)])]
     (->> (mapv (fn [s]
-                 (cond-> s
-                   (contains? WEEKDAYS unit) (with-weekday unit)
-                   :always                   .toInstant
-                   :always                   (chime/periodic-seq incr)))
+                 (let [start (cond-> s
+                               (contains? WEEKDAYS unit) (with-weekday unit))]
+                   (zoned-periodic-seq start unit period)))
            starts)
          (apply interleave))))
 

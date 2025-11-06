@@ -4,3 +4,6 @@
 .lein-repl-history
 .nrepl-port
 .DS_Store
+.clj-kondo
+.claude
+.lsp
