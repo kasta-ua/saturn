@@ -1,7 +1,7 @@
 (ns saturn.schedule
   (:require [clojure.spec.alpha :as s]
             [chime.core :as chime])
-  (:import [java.time Instant Duration LocalTime ZonedDateTime ZoneId DayOfWeek]
+  (:import [java.time Instant Duration LocalTime LocalDateTime ZonedDateTime ZoneId DayOfWeek]
            [java.time.temporal TemporalAdjusters]))
 
 
@@ -26,18 +26,28 @@
     :at         (s/? #{:at})
     :at         (s/? (s/alt
                        :minute ::minute
-                       :times  (s/+ ::time)))))
+                       :times  (s/+ ::time)))
+    :filters    (s/* fn?)))
+
+
+(def tz ^ZoneId (ZoneId/of "Europe/Kiev"))
+
+
+(defn filter-month [month]
+  (fn month-filterer [cur] (= (.getMonthValue (LocalDateTime/ofInstant cur tz)) month)))
+
+
+(defn filter-day [day]
+  (fn day-filterer [cur] (= (.getDayOfMonth (LocalDateTime/ofInstant cur tz)) day)))
 
 
 (comment
   (s/conform ::schedule [:every :minute])
   (s/conform ::schedule [:every 2 :hours :at 50])
   (s/conform ::schedule [:every 1 :day :at 8 0, 13 0, 20 0])
-  (s/conform ::schedule [:every :monday :at 9 0]))
-
-
-(def tz ^ZoneId (ZoneId/of "Europe/Kiev"))
-
+  (s/conform ::schedule [:every :monday :at 9 0])
+  (s/conform ::schedule [:every :monday :at 9 0])
+  (s/conform ::schedule [:every 1 :day :at 14 45 (filter-day 30) (filter-month 12)]))
 
 (defn ^Instant now []
   (Instant/now))
@@ -108,21 +118,22 @@
 
 (defn generate
   "Returns an infinite sequence of times according to schedule"
-  [{:keys [unit period at]
+  [{:keys [unit period at filters]
     :or   {period 1}}]
   (let [starts (case (first at)
                  :minute [(today-at 0 (second at))]
                  :times  (->> (second at)
                               (map #(today-at (:hour %) (:minute %)))
                               (sort))
-                 [(today-at 0 0)])]
+                 [(today-at 0 0)])
+        filter-and (fn [incr] (every? #(% incr) filters))]
     (->> (mapv (fn [s]
                  (let [start (cond-> s
                                (contains? WEEKDAYS unit) (with-weekday unit))]
                    (zoned-periodic-seq start unit period)))
            starts)
-         (apply interleave))))
-
+      (apply interleave)
+      (filter filter-and))))
 
 (defn adjust
   "Returns a schedule sequence suitable for running right now.
